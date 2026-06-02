@@ -1,0 +1,6 @@
+{
+  "name": "TTS Script Refactoring Tool",
+  "description": "An interactive full-stack editor that refactors raw unstructured text into narration-ready formatted TTS scripts with dynamic pacing, inline tooltips, and audio preview.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
