@@ -83,10 +83,11 @@ export default function App() {
   });
   const [knowledgeBase, setKnowledgeBase] = useState<string>(() => {
     return localStorage.getItem('tccd_kb') || 
-      "1. Keep sentences short & punchy to enable comfortable voice breathing gaps.\n" +
-      "2. ABSOLUTELY NEVER write any spoken comments or emotional indicators in brackets [] or parentheses (). The voice-over TTS reads text literally.\n" +
-      "3. Highlight corporate mechanics and slotted behavior using contrasted em dashes (—).\n" +
-      "4. Ensure pacing punctuation is natural and flowing.";
+      "1. Rewrite section titles/parts (like 'part 1: title') into a seamless introductory sentence that flows naturally into the next part of the script, rather than a raw header.\n" +
+      "2. Replace literal words like 'episode' with 'today's episode is about.....' to establish clean conversational audio framing.\n" +
+      "3. For the ending, introduce it smoothly with: 'and in closing today I'd like to leave you with...' followed by the final takeaway thoughts.\n" +
+      "4. Maintain as much of the original raw script phrasing/intent as possible, but shaped elegantly for voice-over read-alouds.\n" +
+      "5. Absolutely never output any guidance or cues inside parentheses () or brackets [] – keep it entirely clean prose meant only for TTS vocals.";
   });
 
   // Local Host API Settings

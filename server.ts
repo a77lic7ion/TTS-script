@@ -32,6 +32,51 @@ function getGeminiClient(customKey?: string): GoogleGenAI {
   });
 }
 
+// Resilient content generator wrapper with automatic retries and model fallbacks
+async function generateContentWithRetry(
+  ai: GoogleGenAI,
+  primaryModel: string,
+  contents: any,
+  config: any,
+  attempts = 2
+): Promise<any> {
+  const modelsToTry = [
+    primaryModel,
+    'gemini-2.5-flash',
+    'gemini-1.5-flash',
+  ].filter((v, i, a) => a.indexOf(v) === i); // keep unique targets
+
+  let lastError: any = null;
+
+  for (const currentModel of modelsToTry) {
+    for (let attempt = 1; attempt <= attempts; attempt++) {
+      try {
+        console.log(`Attempting script generation with LLM: ${currentModel} (Attempt ${attempt}/${attempts})`);
+        const result = await ai.models.generateContent({
+          model: currentModel,
+          contents,
+          config,
+        });
+        return result;
+      } catch (err: any) {
+        lastError = err;
+        console.warn(`Model ${currentModel} on attempt ${attempt} failed: ${err?.message || err}`);
+        
+        // Wait gracefully for potential transient network hiccups or rate limits
+        const isTransient = err?.status === 503 || err?.code === 503 || err?.message?.includes('503') || err?.message?.includes('demand');
+        if (isTransient) {
+          await new Promise(resolve => setTimeout(resolve, 1200 * attempt));
+        } else {
+          // If not transient, try next model immediately
+          break;
+        }
+      }
+    }
+  }
+
+  throw lastError || new Error('All accessible Gemini models failed or are currently undergoing spike loads.');
+}
+
 // Full Reference Template 
 const fallbacks = {
   "original": `Welcome to They Can't Come Down. Your goal is not to raise a child who fears technology, but to raise a child who masters it. You are navigating an unprecedented landscape, and the guilt you feel is a symptom of a system designed to work against you.`,
@@ -134,6 +179,10 @@ app.post('/api/refactor', async (req, res) => {
       2. Keep the script lines clean.
       3. ABSOLUTELY NEVER generate or include any narrative cues, comments, directions, or explanations inside parenthesis () or brackets []. The text lines must consist ONLY of the literal prose wordings meant to be voiced! Timestamps, vocal guidelines, or meta descriptions are STRICTLY forbidden.
       4. Ensure there is zero code or JSON structure inside the output lines themselves.
+      5. If there are any section headers, part titles (e.g. 'part 1 : title'), or numerical section labels inside the raw text blocks, REWRITE them into an elegant, seamless introductory sentence that introduces and flows directly into the next part.
+      6. Maintain as much of the original script content/prose as possible, but rewrite it into flawless, natural voice-over TTS format.
+      7. Replace any instance of the word 'episode' or 'episodes' with a smooth spoken phrase like 'today's episode is about.....' followed by the context of that block.
+      8. For the final closing block, introduce or end it smoothly with the phrase: 'and in closing today I\\'d like to leave you with...' followed by the final takeaway message.
     `;
 
     const prompt = `
@@ -155,10 +204,7 @@ app.post('/api/refactor', async (req, res) => {
       """
     `;
 
-    const result = await ai.models.generateContent({
-      model: model,
-      contents: prompt,
-      config: {
+    const result = await generateContentWithRetry(ai, model, prompt, {
         systemInstruction,
         responseMimeType: 'application/json',
         responseSchema: {
@@ -195,7 +241,6 @@ app.post('/api/refactor', async (req, res) => {
           },
           required: ['sections']
         }
-      }
     });
 
     const parsedResponse = JSON.parse(result.text || '{}');
@@ -232,8 +277,11 @@ app.post('/api/assist', async (req, res) => {
       
       CRITICAL REWRITING LAWS:
       1. ABSOLUTELY DO NOT output any comments, guidance, voice directions, or annotations in brackets [] or parentheses (). The voice-over reader or TTS engine is reading this literally – anything inside brackets or parenthesis will ruin the recording.
-      2. Consistently respect the global Subject context and Knowledge Base constraints if provided.
+      2. Consistently respect any custom user guidance, global Subject context, and Style/Knowledge Base parameters.
       3. Keep the output as a valid JSON list of lines.
+      4. Rewrite section titles/parts (like 'part 1: title') into a seamless introductory sentence that flows naturally into the text.
+      5. Replace any occurrences of the word 'episode' with 'today\\'s episode is about.....'.
+      6. If editing a closing block or segment, smoothly prefix/conclude with: 'and in closing today I\\'d like to leave you with...'.
     `;
 
     const prompt = `
@@ -254,10 +302,7 @@ app.post('/api/assist', async (req, res) => {
       Please execute this rewriting request, re-aligning the pacing rules accordingly. Output the modified block lines in the requested JSON structure. Do NOT add any surrounding text or remarks.
     `;
 
-    const result = await ai.models.generateContent({
-      model: model,
-      contents: prompt,
-      config: {
+    const result = await generateContentWithRetry(ai, model, prompt, {
         systemInstruction,
         responseMimeType: 'application/json',
         responseSchema: {
@@ -282,7 +327,6 @@ app.post('/api/assist', async (req, res) => {
           },
           required: ['lines']
         }
-      }
     });
 
     const parsedResponse = JSON.parse(result.text || '{}');

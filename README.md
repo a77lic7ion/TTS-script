@@ -48,6 +48,15 @@ Features the custom corporate **Sophisticated Dark Design Theme**:
    - Integrates aggressive, real-time correction of common Windows-1252 / UTF-8 mismatched characters.
    - Instantly fixes corrupted sequences like `â€”` (to clean em-dashes `—`), `â€™` (to smart apostrophes `’`), and other web-encoding blemishes. This runs dynamically in the staging editor, during file uploads, in Gemini response parsing, and during final prose compile pipelines.
 
+9. **Seamless Conversational TTS Formatting Controls**:
+   - **Introduction Rewriter**: Instead of leaving raw technical part descriptors (like 'part 1: title', 'section headings') inside the spoken content, the AI replaces them with an natural, elegant transition sentence introducing the block.
+   - **Episode Context Replacements**: Replaces literal words like 'episode' and 'episodes' with a smooth spoken phrase like `'today's episode is about.....'` followed by the context of that block.
+   - **Unified Conclusion Signature**: Rewrites and introduces concluding remarks smoothly using a cozy phrase like: `'and in closing today I'd like to leave you with...'` to wrap the script beautifully.
+
+10. **Resilient LLM Failover & Fallback Heuristics**:
+    - **Self-Healing Retries**: If the primary targeted Gemini model suffers a transient error like a 503 Service Unavailable (due to spikes in model demand) or a 429 Rate Limit, the server automatically delays and retries the operation.
+    - **Alternate Model Escalation**: If retry thresholds are exceeded, the server steps down dynamically through a configured model chain (from `gemini-3.5-flash` down to `gemini-2.5-flash` and `gemini-1.5-flash`), securing successful parsing no matter the traffic load.
+
 ---
 
 ## 🛠️ Tech Stack & Scripts
