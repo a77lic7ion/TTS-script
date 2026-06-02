@@ -40,6 +40,22 @@ import { ScriptLine, ScriptSection, RefactoringSettings, RefactorStrictness } fr
 import { SCRIPT_PRESETS } from './templates';
 import PacingHelp from './components/PacingHelp';
 
+export function cleanEncodingGlitches(text: string): string {
+  if (!text) return "";
+  return text
+    .replace(/â€”/g, ' — ')
+    .replace(/â€“/g, ' – ')
+    .replace(/â€™/g, "’")
+    .replace(/â€˜/g, "‘")
+    .replace(/â€œ/g, '“')
+    .replace(/â€/g, '”')
+    .replace(/â€/g, '”')
+    .replace(/â€¦/g, '...')
+    .replace(/â€¢/g, '•')
+    .replace(/Â/g, '')
+    .replace(/[ \t]+/g, ' ');
+}
+
 export default function App() {
   // Preset loading state
   const [selectedPresetId, setSelectedPresetId] = useState<string>("tccd-intro");
@@ -188,7 +204,7 @@ export default function App() {
     reader.onload = (e) => {
       const text = e.target?.result as string;
       if (text) {
-        setRawText(text);
+        setRawText(cleanEncodingGlitches(text));
         setAlertMessage({ type: 'success', text: `Pasted uploaded file: "${file.name}" into raw staging panel.` });
       }
     };
@@ -197,7 +213,8 @@ export default function App() {
 
   // Local static smart editor fallback that strips all [] and ()
   const localSmartRefactor = (inputText: string): ScriptSection[] => {
-    const paragraphs = inputText.split(/\n\s*\n/).filter(p => p.trim().length > 0);
+    const cleanedInput = cleanEncodingGlitches(inputText);
+    const paragraphs = cleanedInput.split(/\n\s*\n/).filter(p => p.trim().length > 0);
     const resultSections: ScriptSection[] = [];
 
     paragraphs.forEach((paragraph, index) => {
@@ -337,7 +354,7 @@ export default function App() {
           lines: (sec.lines || []).map((line: any, lineIdx: number) => ({
             id: `line-ai-${secIdx}-${lineIdx}-${Date.now()}`,
             // Thoroughly filter any unrequested cues
-            text: (line.text || '').replace(/\[.*?\]/g, '').replace(/\(.*?\)/g, '').trim(),
+            text: cleanEncodingGlitches((line.text || '').replace(/\[.*?\]/g, '').replace(/\(.*?\)/g, '')).trim(),
             rule: line.rule || 'none',
             badgeText: line.badgeText || 'Paced Expression'
           }))
@@ -408,7 +425,7 @@ export default function App() {
             ...s,
             lines: data.lines.map((l: any, lIdx: number) => ({
               id: `line-assist-${sectionId}-${lIdx}-${Date.now()}`,
-              text: (l.text || '').replace(/\[.*?\]/g, '').replace(/\(.*?\)/g, '').trim(),
+              text: cleanEncodingGlitches((l.text || '').replace(/\[.*?\]/g, '').replace(/\(.*?\)/g, '')).trim(),
               rule: l.rule || 'none',
               badgeText: l.badgeText || 'AI Assist Pacing'
             }))
@@ -444,7 +461,7 @@ export default function App() {
           if (l.id !== lineId) return l;
           return { 
             ...l, 
-            text: editingLineText.replace(/\[.*?\]/g, '').replace(/\(.*?\)/g, '').trim() 
+            text: cleanEncodingGlitches(editingLineText.replace(/\[.*?\]/g, '').replace(/\(.*?\)/g, '')).trim() 
           };
         })
       };
@@ -543,8 +560,8 @@ export default function App() {
       .map(sec => {
         return sec.lines
           .map(line => {
-            // Remove any remaining [] or ()
-            let cleanText = line.text
+            // Remove any remaining [] or () and clean glitches
+            let cleanText = cleanEncodingGlitches(line.text)
               .replace(/\[.*?\]/g, '')
               .replace(/\(.*?\)/g, '')
               .replace(/\s+/g, ' ')
@@ -776,7 +793,7 @@ export default function App() {
                 className="w-full bg-transparent text-stone-300 text-xs font-sans p-4 leading-relaxed focus:outline-none min-h-[160px] resize-y scrollbar-thin"
                 placeholder="Paste your raw script paragraphs here to structure them into independent blocks..."
                 value={rawText}
-                onChange={(e) => setRawText(e.target.value)}
+                onChange={(e) => setRawText(cleanEncodingGlitches(e.target.value))}
               />
 
               {isDraggingFile && (

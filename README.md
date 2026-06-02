@@ -44,6 +44,10 @@ Features the custom corporate **Sophisticated Dark Design Theme**:
    - One-click copy or download (`.txt` / `.md`) that compile **spoken prose ONLY**.
    - Strip all timings, section headers, metadata, brackets, and voice indicators to provide a clean draft ready to paste into any voice-over model or read-aloud system.
 
+8. **Dynamic Copy-Paste Unicode Sanitization**:
+   - Integrates aggressive, real-time correction of common Windows-1252 / UTF-8 mismatched characters.
+   - Instantly fixes corrupted sequences like `â€”` (to clean em-dashes `—`), `â€™` (to smart apostrophes `’`), and other web-encoding blemishes. This runs dynamically in the staging editor, during file uploads, in Gemini response parsing, and during final prose compile pipelines.
+
 ---
 
 ## 🛠️ Tech Stack & Scripts
