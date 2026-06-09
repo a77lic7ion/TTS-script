@@ -25,6 +25,7 @@ export interface RefactoringSettings {
   allowContrasts: boolean;
   allowFactualPeriods: boolean;
   allowLineBreaks: boolean;
+  narrationStyle?: 'cinematic' | 'documentary';
 }
 
 export interface DefaultNarrativeTemplate {

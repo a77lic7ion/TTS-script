@@ -133,13 +133,34 @@ export default function App() {
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Form & Settings State
-  const [settings, setSettings] = useState<RefactoringSettings>({
-    strictness: 'moderate',
-    allowDramaticPause: true,
-    allowContrasts: true,
-    allowFactualPeriods: true,
-    allowLineBreaks: true
+  const [settings, setSettings] = useState<RefactoringSettings>(() => {
+    try {
+      const saved = localStorage.getItem('tccd_settings');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        return {
+          strictness: parsed.strictness || 'moderate',
+          allowDramaticPause: parsed.allowDramaticPause !== false,
+          allowContrasts: parsed.allowContrasts !== false,
+          allowFactualPeriods: parsed.allowFactualPeriods !== false,
+          allowLineBreaks: parsed.allowLineBreaks !== false,
+          narrationStyle: parsed.narrationStyle || 'cinematic'
+        };
+      }
+    } catch {}
+    return {
+      strictness: 'moderate',
+      allowDramaticPause: true,
+      allowContrasts: true,
+      allowFactualPeriods: true,
+      allowLineBreaks: true,
+      narrationStyle: 'cinematic'
+    };
   });
+
+  useEffect(() => {
+    localStorage.setItem('tccd_settings', JSON.stringify(settings));
+  }, [settings]);
 
   // Block Assist States (Mapping of sectionId -> prompt input)
   const [assistInstructions, setAssistInstructions] = useState<{ [secId: string]: string }>({});
@@ -431,7 +452,8 @@ export default function App() {
           provider,
           apiKey: targetApiKey,
           model: targetModel,
-          ollamaUrl
+          ollamaUrl,
+          narrationStyle: settings.narrationStyle || 'cinematic'
         })
       });
 
@@ -509,7 +531,8 @@ export default function App() {
           provider,
           apiKey: targetApiKey,
           model: targetModel,
-          ollamaUrl
+          ollamaUrl,
+          narrationStyle: settings.narrationStyle || 'cinematic'
         })
       });
 
@@ -657,6 +680,7 @@ export default function App() {
   // UNBIASED SPOKEN PROSE COPIER & DOWNLOADER
   // Strips all variables, parenthesis, brackets, summaries, timings, and guide labels! Only clean prose text is downloaded for standard TTS modules.
   const compileCleanProseText = (): string => {
+    const isDocStyle = settings.narrationStyle === 'documentary';
     return sections
       .map(sec => {
         return sec.lines
@@ -673,7 +697,7 @@ export default function App() {
           .join('\n');
       })
       .filter(Boolean)
-      .join('\n\n');
+      .join(isDocStyle ? '\n\n---\n\n' : '\n\n');
   };
 
   const handleCopyToClipboard = () => {
@@ -1102,6 +1126,26 @@ export default function App() {
               />
             </div>
 
+            {/* NARRATION ARCHITECTURE STYLE */}
+            <div className="space-y-1.5 bg-[#070708] p-3 rounded border border-white/5">
+              <span className="text-[10px] text-stone-500 uppercase tracking-widest font-mono block mb-1">Narration Architecture Style</span>
+              <select
+                id="narration-style-selector"
+                value={settings.narrationStyle || 'cinematic'}
+                onChange={(e) => setSettings(p => ({ ...p, narrationStyle: e.target.value as any }))}
+                className="w-full bg-[#0c0c0d] border border-white/5 rounded px-2.5 py-2 text-xs text-amber-500 focus:outline-none focus:border-amber-500/50 cursor-pointer font-bold font-mono"
+              >
+                <option value="cinematic">Cinematic Drama (TCCD standard)</option>
+                <option value="documentary">David Attenborough (Slow observational documentary narrator)</option>
+              </select>
+              <p className="text-[9px] text-stone-600 font-mono leading-normal mt-1">
+                {settings.narrationStyle === 'documentary' 
+                  ? 'Attenborough Mode: High-fidelity expert TTS engineering. Sub-410 words distinct blocks with zero bracketed tags, punctuation cue-controls (em-dashes/periods), and deliberate syntactic slowing.'
+                  : 'Cinematic Mode: Fluid conversational dramatic narration suitable for emotional show openings and punchy pacing.'
+                }
+              </p>
+            </div>
+
             {/* HEURISTICS ADVANCED COMPRESSION CHECKBOXES */}
             <div className="space-y-2 bg-[#070708] p-3 rounded border border-white/5">
               <span className="text-[10px] text-stone-500 uppercase tracking-widest font-mono block mb-1">Pacing Refactoring Controls</span>
@@ -1330,16 +1374,42 @@ export default function App() {
                         />
                       </div>
 
-                      {/* manual line appendix */}
-                      <button
-                        id={`add-line-endpoint-${section.id}`}
-                        type="button"
-                        onClick={() => handleAddLine(section.id, section.lines[section.lines.length - 1]?.id || '')}
-                        title="Append custom line to this block"
-                        className="text-stone-500 hover:text-stone-300 p-1 rounded border border-white/5 bg-[#0b0b0c] transition shrink-0"
-                      >
-                        <Plus className="w-3.5 h-3.5" />
-                      </button>
+                      {/* block word counter & warning */}
+                      <div className="flex items-center gap-2 shrink-0 select-none">
+                        {(() => {
+                          const wCount = section.lines.reduce((total, l) => {
+                            return total + (l.text || '').trim().split(/\s+/).filter(Boolean).length;
+                          }, 0);
+                          return (
+                            <span 
+                              className={`text-[9.5px] font-mono px-1.5 py-0.5 rounded border flex items-center gap-1 transition ${
+                                wCount > 410 
+                                  ? 'bg-rose-950/40 text-rose-400 border-rose-500/40 font-bold animate-pulse' 
+                                  : wCount > 355
+                                    ? 'bg-amber-950/40 text-amber-500 border-amber-500/40'
+                                    : 'bg-stone-900/50 text-stone-500 border-white/5'
+                              }`}
+                              title={wCount > 410 ? "Warning: Exceeds the strict 410 words block limit for TTS pacing!" : "Block word count"}
+                            >
+                              <span>{wCount}</span>
+                              <span className="opacity-40">/</span>
+                              <span>410</span>
+                              <span>W</span>
+                            </span>
+                          );
+                        })()}
+
+                        {/* manual line appendix */}
+                        <button
+                          id={`add-line-endpoint-${section.id}`}
+                          type="button"
+                          onClick={() => handleAddLine(section.id, section.lines[section.lines.length - 1]?.id || '')}
+                          title="Append custom line to this block"
+                          className="text-stone-500 hover:text-stone-300 p-1 rounded border border-white/5 bg-[#0b0b0c] transition shrink-0"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
 
                     {/* Lines List inside Card Block */}

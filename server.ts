@@ -448,7 +448,8 @@ app.post('/api/refactor', async (req, res) => {
     provider = 'gemini',
     apiKey = '',
     model = 'gemini-3.5-flash',
-    ollamaUrl = 'http://localhost:11434'
+    ollamaUrl = 'http://localhost:11434',
+    narrationStyle = 'cinematic'
   } = req.body;
 
   if (!text || typeof text !== 'string' || text.trim().length === 0) {
@@ -456,6 +457,8 @@ app.post('/api/refactor', async (req, res) => {
   }
 
   try {
+    const isDocStyle = narrationStyle === 'documentary';
+
     const pacingInstructions = `
       Pacing Parameters:
       - STRICTNESS DEGREE: ${strictness}
@@ -471,7 +474,21 @@ app.post('/api/refactor', async (req, res) => {
       - Break: Break up long flowy clauses into bite-size pieces. Must keep sentences clean!
     `;
 
-    const systemInstruction = `
+    const systemInstruction = isDocStyle ? `
+      You are an expert Script Architect specializing in High-Fidelity Text-to-Speech (TTS) engineering. Your sole objective is to write long-form narratives using the structural cadence, syntactic rhythm, and vocabulary of a slow, deeply observant documentary narrator (David Attenborough style).
+
+      CRITICAL DOCUMENTARY INSTRUCTIONS:
+      1. ZERO METRICS OR STAGING TAGS: Absolute ban on inline audio directions, bracketed prompts, or emotional tags (e.g., NO "[Pause]", "[Lower voice]", "[sigh]", or "*whispers*"). The text must be 100% pure spoken words.
+      2. STRICT CHUNK CEILING: Partition the input text STRICTLY into distinct blocks based on natural paragraph divisions. Each block/section in the returned "sections" JSON array must be strictly under 410 words. If a raw paragraph is too large, split it into multiple distinct section objects.
+      3. SYNTACTIC PACING: Emulate deliberate, unhurried observation. Use short, punchy sentences interspersed with longer, descriptive phrases.
+      4. PUNCTUATION AS CONTROL: Inject em-dashes (—) and frequent periods (.) to inherently force the TTS engine to pause naturally without requiring explicit bracketed tags.
+      5. VOCABULARY SELECTION: Use precise, evocative, and scientific language. Favor sensory and structural words (e.g., "vast," "intricate," "relentless," "exquisite mechanics," "patiently waiting").
+      6. COGNITIVE FLOW: Begin each section by grounding the listener in a specific space, scale, or mechanism before expanding into the broader system architecture.
+      7. CRITICAL PREPEND REQUIREMENT: Always insert an initial section/block at the very beginning of the returned "sections" array. This prepended block MUST have its "title" set exactly to "Intro" and its "summary" set to "Short synopsis preview of the episode". It must contain 2 to 4 highly direct, concise, and to-the-point narrator lines summarizing the key takeaways and core motif of the entire episode.
+      8. If there are any section headers, part titles (e.g. 'part 1 : title'), or numerical section labels inside the raw text blocks, REWRITE them into an elegant, seamless introductory sentence that introduces and flows directly into the next part.
+      9. Replace any instance of the word 'episode' or 'episodes' with a smooth spoken phrase like 'today\'s episode is about.....' followed by the context of that block.
+      10. For the final closing block, introduce or end it smoothly with the phrase: 'and in closing today I\\'d like to leave you with...' followed by the final takeaway message.
+    ` : `
       You are a highly skilled Audio Script Writer and TTS Refactoring Specialist. Your goal is to transform paragraphs into highly polished, dramatic, and emotionally resonant narration-ready scripts.
       
       CRITICAL INSTRUCTIONS:
@@ -481,7 +498,7 @@ app.post('/api/refactor', async (req, res) => {
       4. Ensure there is zero code or JSON structure inside the output lines themselves.
       5. If there are any section headers, part titles (e.g. 'part 1 : title'), or numerical section labels inside the raw text blocks, REWRITE them into an elegant, seamless introductory sentence that introduces and flows directly into the next part.
       6. Maintain as much of the original script content/prose as possible, but rewrite it into flawless, natural voice-over TTS format.
-      7. Replace any instance of the word 'episode' or 'episodes' with a smooth spoken phrase like 'today's episode is about.....' followed by the context of that block.
+      7. Replace any instance of the word 'episode' or 'episodes' with a smooth spoken phrase like 'today\'s episode is about.....' followed by the context of that block.
       8. For the final closing block, introduce or end it smoothly with the phrase: 'and in closing today I\\'d like to leave you with...' followed by the final takeaway message.
       9. BEEF UP the prose of each block elegantly—make it less abruptly direct, more rich, informative, and authoritative sounding. Let thoughts and sentences flow together beautifully like a premium, highly informative documentary narration, rather than brief chopped notes.
       10. CRITICAL PREPEND REQUIREMENT: Always insert an initial section/block at the very beginning of the returned "sections" array. This prepended block MUST have its "title" set exactly to "Intro" and its "summary" set to "Short synopsis preview of the episode". It must contain 2 to 4 highly direct, concise, and to-the-point narrator lines summarizing the key takeaways and core motif of the entire episode, flowing seamlessly into the next section body.
@@ -537,7 +554,8 @@ app.post('/api/assist', async (req, res) => {
     provider = 'gemini',
     apiKey = '',
     model = 'gemini-3.5-flash',
-    ollamaUrl = 'http://localhost:11434'
+    ollamaUrl = 'http://localhost:11434',
+    narrationStyle = 'cinematic'
   } = req.body;
 
   if (!blockText || !instruction) {
@@ -545,7 +563,23 @@ app.post('/api/assist', async (req, res) => {
   }
 
   try {
-    const systemInstruction = `
+    const isDocStyle = narrationStyle === 'documentary';
+
+    const systemInstruction = isDocStyle ? `
+      You are an expert Script Architect specializing in High-Fidelity Text-to-Speech (TTS) engineering. Your sole objective is to write long-form narratives using the structural cadence, syntactic rhythm, and vocabulary of a slow, deeply observant documentary narrator (David Attenborough style).
+      
+      CRITICAL REWRITING LAWS (DOCUMENTARY SCALE):
+      1. ZERO METRICS OR STAGING TAGS: Absolute ban on inline audio directions, bracketed prompts, or emotional tags (e.g., NO "[Pause]", "[Lower voice]", "[sigh]", or "*whispers*"). The text must be 100% pure spoken words.
+      2. STRICT CHUNK CEILING: Ensure this block edit remains strictly below 410 words.
+      3. SYNTACTIC PACING: Emulate deliberate, unhurried observation. Use short, punchy sentences interspersed with longer, descriptive phrases.
+      4. PUNCTUATION AS CONTROL: Inject em-dashes (—) and frequent periods (.) to force natural pauses without brackets.
+      5. VOCABULARY SELECTION: Use precise, evocative, scientific language (e.g., "vast," "intricate," "relentless").
+      6. COGNITIVE FLOW: Ground the listener in space, scale, or mechanism before expanding.
+      7. Keep the output as a valid JSON list of lines.
+      8. Rewrite section titles/parts into a seamless introductory sentence.
+      9. Replace any occurrences of the word 'episode' with 'today\\'s episode is about.....'.
+      10. If editing a closing block, smoothly prefix/conclude with: 'and in closing today I\\'d like to leave you with...'.
+    ` : `
       You are an AI Script Editor. Your job is to rewrite or reword a specific script block based on the user's instructions.
       
       CRITICAL REWRITING LAWS:

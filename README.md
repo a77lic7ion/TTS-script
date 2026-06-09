@@ -35,7 +35,13 @@ Features the custom corporate **Sophisticated Dark Design Theme**:
    - **Contrast & Pivots (`—`)**: Appends em dashes to mark conversational redirects.
    - **Forced Declaratives (`.`)**: Splits up run-on statistics or listings with concise stops.
 
-6. **Interactive Narrative Sandbox**:
+6. **Narration Architecture Styles (Cinematic vs. David Attenborough Documentary)**:
+   - **Cinematic Drama Mode**: Emits standard conversational dramatic narration suitable for emotional openings and dramatic, fluid show pacing.
+   - **David Attenborough Documentary Mode**: Adapts high-fidelity expert TTS engineering rules to emulate a slow, deeply observant documentary narrator. Forces deliberate unhurried observation, a precise scientific vocabulary (e.g., *vast, intricate, Relentless*), punctuation-controlled natural pauses (em-dashes and frequent period markers), and spaces or mechanisms grounding beginnings.
+   - **Strict Word-Ceiling Metrics & Safety Alerts**: Each narration block has a real-time word counter indicating the paragraph length. Highlighting turns red and pulses if a block exceeds the strict 410-word ceiling constraint.
+   - **Markdown Horizontal-Rule Chunks**: When documentary style is chosen, the exported copy and downloads are formatted strictly, separating each block under 410 words via standard Markdown horizontal rules (`---`) with zero meta indicators or tag metrics.
+
+7. **Interactive Narrative Sandbox**:
    - Edit section names and summarization notes on the fly.
    - Real-time line editing (clicking on any line replaces it with an inline editor).
    - Dynamically insert new lines, copy existing lines, or delete segments.
