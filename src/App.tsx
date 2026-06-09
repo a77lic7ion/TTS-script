@@ -92,11 +92,40 @@ export default function App() {
   });
 
   // Local Host API Settings
+  const [provider, setProvider] = useState<'gemini' | 'ollama' | 'openrouter' | 'mistral'>(() => {
+    return (localStorage.getItem('tccd_provider') as any) || 'gemini';
+  });
   const [apiKey, setApiKey] = useState<string>(() => {
     return localStorage.getItem('tccd_api_key') || "";
   });
   const [selectedModel, setSelectedModel] = useState<string>(() => {
     return localStorage.getItem('tccd_model') || "gemini-3.5-flash";
+  });
+  const [ollamaUrl, setOllamaUrl] = useState<string>(() => {
+    return localStorage.getItem('tccd_ollama_url') || "http://localhost:11434";
+  });
+  const [ollamaModel, setOllamaModel] = useState<string>(() => {
+    return localStorage.getItem('tccd_ollama_model') || "llama3";
+  });
+  const [openRouterKey, setOpenRouterKey] = useState<string>(() => {
+    return localStorage.getItem('tccd_openrouter_key') || "";
+  });
+  const [openRouterModel, setOpenRouterModel] = useState<string>(() => {
+    return localStorage.getItem('tccd_openrouter_model') || "meta-llama/llama-3-8b-instruct:free";
+  });
+  const [mistralKey, setMistralKey] = useState<string>(() => {
+    return localStorage.getItem('tccd_mistral_key') || "";
+  });
+  const [mistralModel, setMistralModel] = useState<string>(() => {
+    return localStorage.getItem('tccd_mistral_model') || "mistral-tiny";
+  });
+  const [prefetchedModels, setPrefetchedModels] = useState<string[]>(() => {
+    try {
+      const saved = localStorage.getItem('tccd_prefetched_models');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
   });
 
   // Key Testing States
@@ -140,12 +169,44 @@ export default function App() {
   }, [knowledgeBase]);
 
   useEffect(() => {
+    localStorage.setItem('tccd_provider', provider);
+  }, [provider]);
+
+  useEffect(() => {
     localStorage.setItem('tccd_api_key', apiKey);
   }, [apiKey]);
 
   useEffect(() => {
     localStorage.setItem('tccd_model', selectedModel);
   }, [selectedModel]);
+
+  useEffect(() => {
+    localStorage.setItem('tccd_ollama_url', ollamaUrl);
+  }, [ollamaUrl]);
+
+  useEffect(() => {
+    localStorage.setItem('tccd_ollama_model', ollamaModel);
+  }, [ollamaModel]);
+
+  useEffect(() => {
+    localStorage.setItem('tccd_openrouter_key', openRouterKey);
+  }, [openRouterKey]);
+
+  useEffect(() => {
+    localStorage.setItem('tccd_openrouter_model', openRouterModel);
+  }, [openRouterModel]);
+
+  useEffect(() => {
+    localStorage.setItem('tccd_mistral_key', mistralKey);
+  }, [mistralKey]);
+
+  useEffect(() => {
+    localStorage.setItem('tccd_mistral_model', mistralModel);
+  }, [mistralModel]);
+
+  useEffect(() => {
+    localStorage.setItem('tccd_prefetched_models', JSON.stringify(prefetchedModels));
+  }, [prefetchedModels]);
 
   // Handle Preset Loading
   const handleLoadPreset = (id: string) => {
@@ -303,10 +364,18 @@ export default function App() {
     setIsTestingKey(true);
     setTestResult(null);
     try {
+      const targetApiKey = provider === 'gemini' ? apiKey : (provider === 'openrouter' ? openRouterKey : (provider === 'mistral' ? mistralKey : ''));
+      const targetModel = provider === 'gemini' ? selectedModel : (provider === 'openrouter' ? openRouterModel : (provider === 'mistral' ? mistralModel : ollamaModel));
+
       const response = await fetch('/api/test-key', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiKey, model: selectedModel })
+        body: JSON.stringify({
+          provider,
+          apiKey: targetApiKey,
+          model: targetModel,
+          ollamaUrl
+        })
       });
 
       const data = await response.json();
@@ -315,7 +384,10 @@ export default function App() {
           success: true,
           message: data.message || `Successfully prefetched and connected model!`
         });
-        setAlertMessage({ type: 'success', text: `API connection tested & active: ${selectedModel}` });
+        if (data.prefetchedModels && Array.isArray(data.prefetchedModels)) {
+          setPrefetchedModels(data.prefetchedModels);
+        }
+        setAlertMessage({ type: 'success', text: `API connection tested & active: ${targetModel}` });
       } else {
         throw new Error(data.error || 'Server rejected key check.');
       }
@@ -341,6 +413,9 @@ export default function App() {
     setAlertMessage(null);
 
     try {
+      const targetApiKey = provider === 'gemini' ? apiKey : (provider === 'openrouter' ? openRouterKey : (provider === 'mistral' ? mistralKey : ''));
+      const targetModel = provider === 'gemini' ? selectedModel : (provider === 'openrouter' ? openRouterModel : (provider === 'mistral' ? mistralModel : ollamaModel));
+
       const response = await fetch('/api/refactor', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -353,8 +428,10 @@ export default function App() {
           allowLineBreaks: settings.allowLineBreaks,
           subject,
           knowledgeBase,
-          model: selectedModel,
-          apiKey
+          provider,
+          apiKey: targetApiKey,
+          model: targetModel,
+          ollamaUrl
         })
       });
 
@@ -380,7 +457,7 @@ export default function App() {
         }));
 
         setSections(mappedSections);
-        setAlertMessage({ type: 'success', text: 'Gemini successfully completed script refactoring. Blocks map paragraph format.' });
+        setAlertMessage({ type: 'success', text: `LLM successfully completed script refactoring. Blocks map paragraph format using ${provider}.` });
       } else {
         throw new Error('Malformed segment structure returned.');
       }
@@ -389,9 +466,9 @@ export default function App() {
       const offlineScript = localSmartRefactor(rawText);
       setSections(offlineScript);
 
-      const warningText = err.message?.includes('GEMINI_API_KEY') || err.message?.includes('defined')
-        ? "No Gemini API Key defined. Successfully completed formatting offline on your PC using local pacing engines."
-        : `Connected model busy. Staged paragraphs formatted using offline heuristics.`;
+      const warningText = err.message?.includes('GEMINI_API_KEY') || err.message?.includes('defined') || err.message?.includes('API key')
+        ? `No API key defined for ${provider}. Successfully completed formatting offline on your PC using local pacing engines.`
+        : `Connected model busy. Staged paragraphs formatted using offline heuristics. Error: ${err.message}`;
       
       setAlertMessage({ type: 'warn', text: warningText });
     } finally {
@@ -417,6 +494,9 @@ export default function App() {
     setIsApplyingAssist(true);
     setAlertMessage(null);
 
+    const targetApiKey = provider === 'gemini' ? apiKey : (provider === 'openrouter' ? openRouterKey : (provider === 'mistral' ? mistralKey : ''));
+    const targetModel = provider === 'gemini' ? selectedModel : (provider === 'openrouter' ? openRouterModel : (provider === 'mistral' ? mistralModel : ollamaModel));
+
     try {
       const response = await fetch('/api/assist', {
         method: 'POST',
@@ -426,8 +506,10 @@ export default function App() {
           instruction,
           subject,
           knowledgeBase,
-          model: selectedModel,
-          apiKey
+          provider,
+          apiKey: targetApiKey,
+          model: targetModel,
+          ollamaUrl
         })
       });
 
@@ -453,7 +535,7 @@ export default function App() {
         
         // Clear input instruction on success
         setAssistInstructions(prev => ({ ...prev, [sectionId]: '' }));
-        setAlertMessage({ type: 'success', text: `Block rewritten successfully matching: "${instruction.substring(0, 20)}..."` });
+        setAlertMessage({ type: 'success', text: `Block rewritten successfully matching: "${instruction.substring(0, 20)}..." using ${provider}` });
       } else {
         throw new Error('AI returned empty response lines.');
       }
@@ -676,42 +758,219 @@ export default function App() {
                 <Cpu className="w-3.5 h-3.5" />
                 <span>API &amp; Model Hub</span>
               </span>
-              <span className="text-[9px] bg-amber-950/20 text-amber-500 border border-amber-900/30 px-1.5 py-0.5 rounded font-mono font-bold">Local Active</span>
+              <span className="text-[9px] bg-amber-950/20 text-amber-500 border border-amber-900/30 px-1.5 py-0.5 rounded font-mono font-bold uppercase">Multi-Provider</span>
             </div>
 
-            {/* Custom Key (saved in localStorage for local hosting convenience) */}
+            {/* LLM Provider Selector */}
             <div className="space-y-1">
               <label className="text-[10px] text-stone-400 font-mono uppercase tracking-wider flex items-center gap-1">
-                <KeyRound className="w-3 h-3 text-stone-500" />
-                <span>Gemini API Key</span>
-              </label>
-              <input
-                id="api-key-input"
-                type="password"
-                placeholder="Enter Gemini Secret Key (Optional)"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.target.value)}
-                className="w-full bg-[#070708] border border-white/5 rounded px-2.5 py-2 text-xs text-stone-200 placeholder-stone-600 focus:outline-none focus:border-amber-500/50"
-              />
-            </div>
-
-            {/* model selection */}
-            <div className="space-y-1">
-              <label className="text-[10px] text-stone-400 font-mono uppercase tracking-wider flex items-center gap-1">
-                <Settings className="w-3 h-3 text-stone-500" />
-                <span>Selected LLM Target</span>
+                <Cpu className="w-3 h-3 text-stone-500" />
+                <span>LLM Provider</span>
               </label>
               <select
-                id="model-selector"
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
-                className="w-full bg-[#070708] border border-white/5 rounded px-2 py-2 text-xs text-stone-300 focus:outline-none focus:border-amber-500/50 cursor-pointer"
+                id="provider-selector"
+                value={provider}
+                onChange={(e) => {
+                  setProvider(e.target.value as any);
+                  setTestResult(null);
+                  setPrefetchedModels([]);
+                }}
+                className="w-full bg-[#070708] border border-white/5 rounded px-2.5 py-2 text-xs text-amber-500 focus:outline-none focus:border-amber-500/50 cursor-pointer font-bold"
               >
-                <option value="gemini-3.5-flash">gemini-3.5-flash (Standard &amp; Speed)</option>
-                <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (Creative Deep Edit)</option>
-                <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (Responsive Light)</option>
+                <option value="gemini">Google Gemini (Default)</option>
+                <option value="ollama">Ollama (Local Host)</option>
+                <option value="openrouter">OpenRouter (Any LLM)</option>
+                <option value="mistral">Mistral AI (European AI)</option>
               </select>
             </div>
+
+            {/* Gemini Configuration Elements */}
+            {provider === 'gemini' && (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-stone-400 font-mono uppercase tracking-wider flex items-center gap-1">
+                    <KeyRound className="w-3 h-3 text-stone-500" />
+                    <span>Gemini API Key</span>
+                  </label>
+                  <input
+                    id="api-key-input"
+                    type="password"
+                    placeholder="Enter Gemini Secret Key (Optional)"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    className="w-full bg-[#070708] border border-white/5 rounded px-2.5 py-2 text-xs text-stone-200 placeholder-stone-600 focus:outline-none focus:border-amber-500/50"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] text-stone-400 font-mono uppercase tracking-wider flex items-center gap-1">
+                    <Settings className="w-3 h-3 text-stone-500" />
+                    <span>Selected Gemini Model</span>
+                  </label>
+                  <select
+                    id="model-selector"
+                    value={selectedModel}
+                    onChange={(e) => setSelectedModel(e.target.value)}
+                    className="w-full bg-[#070708] border border-white/5 rounded px-2 py-2 text-xs text-stone-300 focus:outline-none focus:border-amber-500/50 cursor-pointer"
+                  >
+                    <option value="gemini-3.5-flash">gemini-3.5-flash (Standard &amp; Speed)</option>
+                    <option value="gemini-3.1-pro-preview">gemini-3.1-pro-preview (Creative Deep Edit)</option>
+                    <option value="gemini-3.1-flash-lite">gemini-3.1-flash-lite (Responsive Light)</option>
+                    <option value="gemini-2.5-flash">gemini-2.5-flash (Legacy Pro-Active)</option>
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {/* Ollama Configuration Elements */}
+            {provider === 'ollama' && (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-stone-400 font-mono uppercase tracking-wider flex items-center gap-1">
+                    <Cpu className="w-3 h-3 text-stone-500" />
+                    <span>Ollama API Host</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. http://localhost:11434"
+                    value={ollamaUrl}
+                    onChange={(e) => setOllamaUrl(e.target.value)}
+                    className="w-full bg-[#070708] border border-white/5 rounded px-2.5 py-2 text-xs text-stone-200 focus:outline-none focus:border-amber-500/50 font-mono"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] text-stone-400 font-mono uppercase tracking-wider flex items-center gap-1">
+                    <Settings className="w-3 h-3 text-stone-500" />
+                    <span>Ollama Model Target</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. llama3, mistral, gemma"
+                    value={ollamaModel}
+                    onChange={(e) => setOllamaModel(e.target.value)}
+                    className="w-full bg-[#070708] border border-white/5 rounded px-2.5 py-2 text-xs text-stone-200 focus:outline-none focus:border-amber-500/50 font-mono"
+                  />
+                  {prefetchedModels.length > 0 && (
+                    <div className="pt-1">
+                      <span className="text-[9px] text-stone-500 font-mono block mb-1">Local models installed:</span>
+                      <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                        {prefetchedModels.map(m => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setOllamaModel(m)}
+                            className={`px-2 py-0.5 rounded text-[9px] font-mono border transition ${ollamaModel === m ? 'bg-amber-950/30 text-amber-500 border-amber-500/30' : 'bg-[#070708] text-stone-500 border-white/5 hover:border-stone-750'}`}
+                          >
+                            {m}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* OpenRouter Configuration Elements */}
+            {provider === 'openrouter' && (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-stone-400 font-mono uppercase tracking-wider flex items-center gap-1">
+                    <KeyRound className="w-3 h-3 text-stone-500" />
+                    <span>OpenRouter API Key</span>
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Enter OpenRouter API Key"
+                    value={openRouterKey}
+                    onChange={(e) => setOpenRouterKey(e.target.value)}
+                    className="w-full bg-[#070708] border border-white/5 rounded px-2.5 py-2 text-xs text-stone-200 focus:outline-none focus:border-amber-500/50"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] text-stone-400 font-mono uppercase tracking-wider flex items-center gap-1">
+                    <Settings className="w-3 h-3 text-stone-500" />
+                    <span>OpenRouter Model Target</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. meta-llama/llama-3-8b-instruct:free"
+                    value={openRouterModel}
+                    onChange={(e) => setOpenRouterModel(e.target.value)}
+                    className="w-full bg-[#070708] border border-white/5 rounded px-2.5 py-2 text-xs text-stone-200 focus:outline-none focus:border-amber-500/50 font-mono"
+                  />
+                  {prefetchedModels.length > 0 && (
+                    <div className="pt-1">
+                      <span className="text-[9px] text-stone-500 font-mono block mb-1">Available popular models:</span>
+                      <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                        {prefetchedModels.map(m => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setOpenRouterModel(m)}
+                            className={`px-2 py-0.5 rounded text-[9px] font-mono border transition ${openRouterModel === m ? 'bg-amber-950/30 text-amber-500 border-amber-500/30' : 'bg-[#070708] text-stone-500 border-white/5 hover:border-stone-750'}`}
+                          >
+                            {m.split('/').pop()}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Mistral Configuration Elements */}
+            {provider === 'mistral' && (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] text-stone-400 font-mono uppercase tracking-wider flex items-center gap-1">
+                    <KeyRound className="w-3 h-3 text-stone-500" />
+                    <span>Mistral API Key</span>
+                  </label>
+                  <input
+                    type="password"
+                    placeholder="Enter Mistral API Key"
+                    value={mistralKey}
+                    onChange={(e) => setMistralKey(e.target.value)}
+                    className="w-full bg-[#070708] border border-white/5 rounded px-2.5 py-2 text-xs text-stone-200 focus:outline-none focus:border-amber-500/50"
+                  />
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-[10px] text-stone-400 font-mono uppercase tracking-wider flex items-center gap-1">
+                    <Settings className="w-3 h-3 text-stone-500" />
+                    <span>Mistral Model Target</span>
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="e.g. mistral-tiny, open-mistral-7b"
+                    value={mistralModel}
+                    onChange={(e) => setMistralModel(e.target.value)}
+                    className="w-full bg-[#070708] border border-white/5 rounded px-2.5 py-2 text-xs text-stone-200 focus:outline-none focus:border-amber-500/50 font-mono"
+                  />
+                  {prefetchedModels.length > 0 && (
+                    <div className="pt-1">
+                      <span className="text-[9px] text-stone-500 font-mono block mb-1">Available platform models:</span>
+                      <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto">
+                        {prefetchedModels.map(m => (
+                          <button
+                            key={m}
+                            type="button"
+                            onClick={() => setMistralModel(m)}
+                            className={`px-2 py-0.5 rounded text-[9px] font-mono border transition ${mistralModel === m ? 'bg-amber-950/30 text-amber-500 border-amber-500/30' : 'bg-[#070708] text-stone-500 border-white/5 hover:border-stone-750'}`}
+                          >
+                            {m}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Key verification test button */}
             <button
@@ -724,7 +983,7 @@ export default function App() {
               {isTestingKey ? (
                 <>
                   <RefreshCw className="w-3 h-3 animate-spin" />
-                  <span>Checking Core Access...</span>
+                  <span>Checking Connection...</span>
                 </>
               ) : (
                 <>

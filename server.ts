@@ -98,9 +98,118 @@ const fallbacks = {
 
 // POST Endpoint for testing and prefetching API Key/Model
 app.post('/api/test-key', async (req, res) => {
-  const { apiKey, model = 'gemini-3.5-flash' } = req.body;
-  const targetKey = apiKey || process.env.GEMINI_API_KEY;
+  const { provider = 'gemini', apiKey, model, ollamaUrl } = req.body;
+  const finalProvider = provider.toLowerCase();
 
+  if (finalProvider === 'ollama') {
+    const oUrl = (ollamaUrl || 'http://localhost:11434').replace(/\/$/, '');
+    try {
+      console.log(`Checking Ollama connection via ${oUrl}/api/tags...`);
+      const tagsResponse = await fetch(`${oUrl}/api/tags`, { signal: AbortSignal.timeout(4000) });
+      if (!tagsResponse.ok) {
+        throw new Error(`Ollama returned status ${tagsResponse.status}`);
+      }
+      const data = await tagsResponse.json();
+      const prefetched = (data.models || []).map((m: any) => m.name);
+      
+      return res.json({
+        success: true,
+        message: `Verified! Ollama [${oUrl}] is reachable. Found ${prefetched.length} models installed.`,
+        prefetchedModels: prefetched
+      });
+    } catch (err: any) {
+      return res.status(400).json({
+        error: `Could not reach local Ollama on ${oUrl}. Is the service running locally? Error: ${err.message}`
+      });
+    }
+  }
+
+  if (finalProvider === 'openrouter') {
+    const targetKey = apiKey || process.env.OPENROUTER_API_KEY;
+    try {
+      console.log('Fetching OpenRouter models...');
+      const modelsResponse = await fetch('https://openrouter.ai/api/v1/models', { signal: AbortSignal.timeout(4000) });
+      const mData = await modelsResponse.json();
+      const allModels = (mData.data || []).map((m: any) => m.id);
+      const popular = allModels.slice(0, 30);
+      
+      // Connection test
+      const testRes = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${targetKey || ''}`,
+          'HTTP-Referer': 'https://ai.studio/build',
+          'X-Title': 'They Cant Come Down TTS'
+        },
+        body: JSON.stringify({
+          model: model || 'meta-llama/llama-3-8b-instruct:free',
+          messages: [{ role: 'user', content: 'respond with ok' }],
+          max_tokens: 5
+        }),
+        signal: AbortSignal.timeout(5000)
+      });
+      
+      if (!testRes.ok) {
+        throw new Error(`OpenRouter answered with status ${testRes.status}`);
+      }
+
+      return res.json({
+        success: true,
+        message: `Verified! OpenRouter authentication successful with model [${model || 'meta-llama/llama-3-8b-instruct:free'}].`,
+        prefetchedModels: popular
+      });
+    } catch (err: any) {
+      return res.status(400).json({
+        error: `OpenRouter test failed: ${err.message}. Please double-check your API Key.`
+      });
+    }
+  }
+
+  if (finalProvider === 'mistral') {
+    const targetKey = apiKey || process.env.MISTRAL_API_KEY;
+    try {
+      console.log('Fetching Mistral models...');
+      const modelsResponse = await fetch('https://api.mistral.ai/v1/models', {
+        headers: { 'Authorization': `Bearer ${targetKey || ''}` },
+        signal: AbortSignal.timeout(4000)
+      });
+      const mData = await modelsResponse.json();
+      const prefetched = (mData.data || []).map((m: any) => m.id);
+
+      // Simple test completion
+      const testRes = await fetch('https://api.mistral.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${targetKey || ''}`
+        },
+        body: JSON.stringify({
+          model: model || 'mistral-tiny',
+          messages: [{ role: 'user', content: 'respond with ok' }],
+          max_tokens: 5
+        }),
+        signal: AbortSignal.timeout(5000)
+      });
+
+      if (!testRes.ok) {
+        throw new Error(`Mistral answered with status ${testRes.status}`);
+      }
+
+      return res.json({
+        success: true,
+        message: `Verified! Mistral authentication successful matching model [${model || 'mistral-tiny'}].`,
+        prefetchedModels: prefetched
+      });
+    } catch (err: any) {
+      return res.status(400).json({
+        error: `Mistral test failed: ${err.message}. Please double-check your API Key.`
+      });
+    }
+  }
+
+  // Fallback to Gemini
+  const targetKey = apiKey || process.env.GEMINI_API_KEY;
   if (!targetKey) {
     return res.status(400).json({ error: 'No API Key was found in the environment or request payload.' });
   }
@@ -115,15 +224,14 @@ app.post('/api/test-key', async (req, res) => {
       },
     });
 
-    // Generate a miniature completion
     const result = await ai.models.generateContent({
-      model: model,
+      model: model || 'gemini-3.5-flash',
       contents: "Respond with the word 'Confirmed'",
     });
 
     return res.json({
       success: true,
-      message: `Verified! Model [${model}] reached successfully.`,
+      message: `Verified! Model [${model || 'gemini-3.5-flash'}] reached successfully.`,
       pingResponse: result.text ? result.text.trim() : 'Confirmed'
     });
   } catch (error: any) {
@@ -133,6 +241,198 @@ app.post('/api/test-key', async (req, res) => {
     });
   }
 });
+
+// Helper function to clean and parse JSON securely from any provider
+function cleanAndParseJSON(text: string): any {
+  if (!text) {
+    throw new Error("Response content is empty.");
+  }
+  
+  let cleaned = text.trim();
+  
+  // Remove markdown code fence if present
+  if (cleaned.startsWith('```')) {
+    const match = cleaned.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/i);
+    if (match) {
+      cleaned = match[1].trim();
+    }
+  }
+  
+  // Isolate first '{' and last '}' to strip any external explanations before/after
+  const firstBrace = cleaned.indexOf('{');
+  const lastBrace = cleaned.lastIndexOf('}');
+  
+  if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+    cleaned = cleaned.substring(firstBrace, lastBrace + 1);
+  }
+  
+  return JSON.parse(cleaned);
+}
+
+// Universal assistant caller supporting Gemini, Ollama, OpenRouter, and Mistral
+async function generateContentWithProvider(
+  provider: string,
+  apiKey: string,
+  model: string,
+  ollamaUrl: string,
+  prompt: string,
+  systemInstruction?: string,
+  schemaType?: 'sections' | 'lines'
+): Promise<string> {
+  const finalProvider = (provider || 'gemini').toLowerCase();
+
+  if (finalProvider === 'gemini') {
+    const ai = getGeminiClient(apiKey);
+    let config: any = {
+      systemInstruction,
+    };
+    if (schemaType === 'sections') {
+      config.responseMimeType = 'application/json';
+      config.responseSchema = {
+        type: Type.OBJECT,
+        properties: {
+          sections: {
+            type: Type.ARRAY,
+            description: 'List of detected blocks matching the narrative paragraphs submitted',
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                title: { type: Type.STRING, description: 'Title of the script block/section' },
+                summary: { type: Type.STRING, description: 'Brief context or summary cue for this section' },
+                lines: {
+                  type: Type.ARRAY,
+                  description: 'Sequential lines with applied punctuation, strictly excluding any parenthesized or bracketed comments',
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      text: { type: Type.STRING, description: 'Refactored text line with emotional pacing punctuation' },
+                      rule: {
+                        type: Type.STRING,
+                        description: 'The pacing rule applied: "dramatic" | "contrast" | "factual" | "break" | "none"'
+                      },
+                      badgeText: { type: Type.STRING, description: 'Brief reason for this pacing application' }
+                    },
+                    required: ['text', 'rule', 'badgeText']
+                  }
+                }
+              },
+              required: ['title', 'summary', 'lines']
+            }
+          }
+        },
+        required: ['sections']
+      };
+    } else if (schemaType === 'lines') {
+      config.responseMimeType = 'application/json';
+      config.responseSchema = {
+        type: Type.OBJECT,
+        properties: {
+          lines: {
+            type: Type.ARRAY,
+            description: 'The updated narrative lines representing this script block, strictly containing no parenthesis or brackets',
+            items: {
+              type: Type.OBJECT,
+              properties: {
+                text: { type: Type.STRING, description: 'Reworded script sentence/clause' },
+                rule: {
+                  type: Type.STRING,
+                  description: 'Primary rule applied: "dramatic" | "contrast" | "factual" | "break" | "none"'
+                },
+                badgeText: { type: Type.STRING, description: 'Short pacing badge text' }
+              },
+              required: ['text', 'rule', 'badgeText']
+            }
+          }
+        },
+        required: ['lines']
+      };
+    }
+
+    const result = await generateContentWithRetry(ai, model || 'gemini-3.5-flash', prompt, config);
+    return result.text || '';
+  }
+
+  // Non-Gemini providers: Ollama, OpenRouter, Mistral
+  let url = '';
+  let headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  let body: any = {};
+
+  const systemPrompt = systemInstruction ? `${systemInstruction}\n\n` : '';
+  const finalPrompt = `${systemPrompt}You MUST output dynamic valid JSON content matching the requested JSON structure. No description, no conversation. Just return raw JSON. If schema calls for sections: return format like \`{ "sections": [{ "title": "...", "summary": "...", "lines": [{ "text": "...", "rule": "...", "badgeText": "..." }] }] }\`. If schema calls for lines: return format like \`{ "lines": [{ "text": "...", "rule": "...", "badgeText": "..." }] }\`.\n\nUser request: ${prompt}`;
+
+  if (finalProvider === 'ollama') {
+    const oUrl = (ollamaUrl || 'http://localhost:11434').replace(/\/$/, '');
+    url = `${oUrl}/api/generate`;
+    body = {
+      model: model || 'llama3',
+      prompt: finalPrompt,
+      stream: false,
+      options: {
+        temperature: 0.2
+      }
+    };
+    if (schemaType) {
+      body.format = 'json';
+    }
+  } else if (finalProvider === 'openrouter') {
+    url = 'https://openrouter.ai/api/v1/chat/completions';
+    headers['Authorization'] = `Bearer ${apiKey || ''}`;
+    headers['HTTP-Referer'] = 'https://ai.studio/build';
+    headers['X-Title'] = 'They Cant Come Down TTS';
+    
+    body = {
+      model: model || 'meta-llama/llama-3-8b-instruct:free',
+      messages: [
+        { role: 'system', content: systemInstruction || 'You are a professional assistant.' },
+        { role: 'user', content: finalPrompt }
+      ],
+      temperature: 0.2,
+    };
+    if (schemaType) {
+      body.response_format = { type: 'json_object' };
+    }
+  } else if (finalProvider === 'mistral') {
+    url = 'https://api.mistral.ai/v1/chat/completions';
+    headers['Authorization'] = `Bearer ${apiKey || ''}`;
+    
+    body = {
+      model: model || 'mistral-tiny',
+      messages: [
+        { role: 'system', content: systemInstruction || 'You are a professional assistant.' },
+        { role: 'user', content: finalPrompt }
+      ],
+      temperature: 0.2,
+    };
+    if (schemaType) {
+      body.response_format = { type: 'json_object' };
+    }
+  } else {
+    throw new Error(`Unsupported provider: ${provider}`);
+  }
+
+  console.log(`Sending API request to ${url} with model ${model}`);
+  const response = await fetch(url, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60000)
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`LLM provider ${provider} server returned ${response.status}: ${errText}`);
+  }
+
+  const resData = await response.json();
+  if (finalProvider === 'ollama') {
+    return resData.response || '';
+  } else {
+    if (resData.choices && resData.choices[0] && resData.choices[0].message) {
+      return resData.choices[0].message.content || '';
+    }
+    throw new Error(`Invalid response structure from provider ${provider}: ${JSON.stringify(resData)}`);
+  }
+}
 
 // POST Endpoint for refactoring text blocks (with Subject & KnowledgeBase)
 app.post('/api/refactor', async (req, res) => {
@@ -145,8 +445,10 @@ app.post('/api/refactor', async (req, res) => {
     allowLineBreaks = true,
     subject = '',
     knowledgeBase = '',
+    provider = 'gemini',
+    apiKey = '',
     model = 'gemini-3.5-flash',
-    apiKey = ''
+    ollamaUrl = 'http://localhost:11434'
   } = req.body;
 
   if (!text || typeof text !== 'string' || text.trim().length === 0) {
@@ -154,8 +456,6 @@ app.post('/api/refactor', async (req, res) => {
   }
 
   try {
-    const ai = getGeminiClient(apiKey);
-
     const pacingInstructions = `
       Pacing Parameters:
       - STRICTNESS DEGREE: ${strictness}
@@ -206,52 +506,23 @@ app.post('/api/refactor', async (req, res) => {
       """
     `;
 
-    const result = await generateContentWithRetry(ai, model, prompt, {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            sections: {
-              type: Type.ARRAY,
-              description: 'List of detected blocks matching the narrative paragraphs submitted',
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  title: { type: Type.STRING, description: 'Title of the script block/section' },
-                  summary: { type: Type.STRING, description: 'Brief context or summary cue for this section' },
-                  lines: {
-                    type: Type.ARRAY,
-                    description: 'Sequential lines with applied punctuation, strictly excluding any parenthesized or bracketed comments',
-                    items: {
-                      type: Type.OBJECT,
-                      properties: {
-                        text: { type: Type.STRING, description: 'Refactored text line with emotional pacing punctuation' },
-                        rule: {
-                          type: Type.STRING,
-                          description: 'The pacing rule applied: "dramatic" | "contrast" | "factual" | "break" | "none"'
-                        },
-                        badgeText: { type: Type.STRING, description: 'Brief reason for this pacing application' }
-                      },
-                      required: ['text', 'rule', 'badgeText']
-                    }
-                  }
-                },
-                required: ['title', 'summary', 'lines']
-              }
-            }
-          },
-          required: ['sections']
-        }
-    });
+    const rawResult = await generateContentWithProvider(
+      provider,
+      apiKey,
+      model,
+      ollamaUrl,
+      prompt,
+      systemInstruction,
+      'sections'
+    );
 
-    const parsedResponse = JSON.parse(result.text || '{}');
+    const parsedResponse = cleanAndParseJSON(rawResult);
     return res.json(parsedResponse);
   } catch (error: any) {
-    console.error('Gemini processing error:', error);
+    console.error('Multi-provider processing error:', error);
     return res.status(500).json({
-      error: error?.message || 'Failed to process script with Gemini API.',
-      isSecurityError: error?.message?.includes('GEMINI_API_KEY')
+      error: error?.message || 'Failed to process script with chosen LLM Provider.',
+      isSecurityError: error?.message?.some?.(s => s.includes?.('KEY')) || error?.message?.includes?.('key') || error?.message?.includes?.('Key')
     });
   }
 });
@@ -263,8 +534,10 @@ app.post('/api/assist', async (req, res) => {
     instruction,
     subject = '',
     knowledgeBase = '',
+    provider = 'gemini',
+    apiKey = '',
     model = 'gemini-3.5-flash',
-    apiKey = ''
+    ollamaUrl = 'http://localhost:11434'
   } = req.body;
 
   if (!blockText || !instruction) {
@@ -272,8 +545,6 @@ app.post('/api/assist', async (req, res) => {
   }
 
   try {
-    const ai = getGeminiClient(apiKey);
-
     const systemInstruction = `
       You are an AI Script Editor. Your job is to rewrite or reword a specific script block based on the user's instructions.
       
@@ -305,39 +576,22 @@ app.post('/api/assist', async (req, res) => {
       Please execute this rewriting request, re-aligning the pacing rules accordingly. Output the modified block lines in the requested JSON structure. Do NOT add any surrounding text or remarks.
     `;
 
-    const result = await generateContentWithRetry(ai, model, prompt, {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        responseSchema: {
-          type: Type.OBJECT,
-          properties: {
-            lines: {
-              type: Type.ARRAY,
-              description: 'The updated narrative lines representing this script block, strictly containing no parenthesis or brackets',
-              items: {
-                type: Type.OBJECT,
-                properties: {
-                  text: { type: Type.STRING, description: 'Reworded script sentence/clause' },
-                  rule: {
-                    type: Type.STRING,
-                    description: 'Primary rule applied: "dramatic" | "contrast" | "factual" | "break" | "none"'
-                  },
-                  badgeText: { type: Type.STRING, description: 'Short pacing badge text' }
-                },
-                required: ['text', 'rule', 'badgeText']
-              }
-            }
-          },
-          required: ['lines']
-        }
-    });
+    const rawResult = await generateContentWithProvider(
+      provider,
+      apiKey,
+      model,
+      ollamaUrl,
+      prompt,
+      systemInstruction,
+      'lines'
+    );
 
-    const parsedResponse = JSON.parse(result.text || '{}');
+    const parsedResponse = cleanAndParseJSON(rawResult);
     return res.json(parsedResponse);
   } catch (error: any) {
-    console.error('Gemini Assist failed:', error);
+    console.error('Multi-provider Assist failed:', error);
     return res.status(500).json({
-      error: error?.message || 'Failed to modify segment with Gemini AI.'
+      error: error?.message || 'Failed to modify segment with selected LLM provider.'
     });
   }
 });
