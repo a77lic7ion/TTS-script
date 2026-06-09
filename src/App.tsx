@@ -87,7 +87,8 @@ export default function App() {
       "2. Replace literal words like 'episode' with 'today's episode is about.....' to establish clean conversational audio framing.\n" +
       "3. For the ending, introduce it smoothly with: 'and in closing today I'd like to leave you with...' followed by the final takeaway thoughts.\n" +
       "4. Maintain as much of the original raw script phrasing/intent as possible, but shaped elegantly for voice-over read-alouds.\n" +
-      "5. Absolutely never output any guidance or cues inside parentheses () or brackets [] – keep it entirely clean prose meant only for TTS vocals.";
+      "5. Absolutely never output any guidance or cues inside parentheses () or brackets [] – keep it entirely clean prose meant only for TTS vocals.\n" +
+      "6. Automatically prepend a concise, short, and to-the-point introductory synopsis section at the very beginning with the title 'Intro'.";
   });
 
   // Local Host API Settings
@@ -276,6 +277,23 @@ export default function App() {
         });
       }
     });
+
+    if (resultSections.length > 0) {
+      // Prepend an Intro synopsis section in local fallback matching the user's automated demand
+      resultSections.unshift({
+        id: `sec-offline-intro-${Date.now()}`,
+        title: "Intro",
+        summary: "Short synopsis preview of the episode.",
+        lines: [
+          {
+            id: `line-offline-intro-1-${Date.now()}`,
+            text: "In this episode, we embark on an inquiry into the digital forces shaping modern behaviors, exploring personal connection, systemic capture, and tactical recovery methods.",
+            rule: "factual",
+            badgeText: "Intro Synopsis"
+          }
+        ]
+      });
+    }
 
     return resultSections;
   };

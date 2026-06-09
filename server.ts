@@ -183,6 +183,8 @@ app.post('/api/refactor', async (req, res) => {
       6. Maintain as much of the original script content/prose as possible, but rewrite it into flawless, natural voice-over TTS format.
       7. Replace any instance of the word 'episode' or 'episodes' with a smooth spoken phrase like 'today's episode is about.....' followed by the context of that block.
       8. For the final closing block, introduce or end it smoothly with the phrase: 'and in closing today I\\'d like to leave you with...' followed by the final takeaway message.
+      9. BEEF UP the prose of each block elegantly—make it less abruptly direct, more rich, informative, and authoritative sounding. Let thoughts and sentences flow together beautifully like a premium, highly informative documentary narration, rather than brief chopped notes.
+      10. CRITICAL PREPEND REQUIREMENT: Always insert an initial section/block at the very beginning of the returned "sections" array. This prepended block MUST have its "title" set exactly to "Intro" and its "summary" set to "Short synopsis preview of the episode". It must contain 2 to 4 highly direct, concise, and to-the-point narrator lines summarizing the key takeaways and core motif of the entire episode, flowing seamlessly into the next section body.
     `;
 
     const prompt = `
@@ -282,6 +284,7 @@ app.post('/api/assist', async (req, res) => {
       4. Rewrite section titles/parts (like 'part 1: title') into a seamless introductory sentence that flows naturally into the text.
       5. Replace any occurrences of the word 'episode' with 'today\\'s episode is about.....'.
       6. If editing a closing block or segment, smoothly prefix/conclude with: 'and in closing today I\\'d like to leave you with...'.
+      7. BEEF UP the prose elegantly—make it less abruptly direct, more rich, informative, and authoritative sounding. Thoughts must flow together like premium narrator content.
     `;
 
     const prompt = `
