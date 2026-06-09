@@ -38,7 +38,7 @@ Features the custom corporate **Sophisticated Dark Design Theme**:
 6. **Narration Architecture Styles (Cinematic vs. David Attenborough Documentary)**:
    - **Cinematic Drama Mode**: Emits standard conversational dramatic narration suitable for emotional openings and dramatic, fluid show pacing.
    - **David Attenborough Documentary Mode (Psychological Audio-Essayist)**: Adapts high-fidelity expert TTS engineering rules to emulate a slow, deeply observant, and profound documentary narrator. 
-     - **Aggressive Narrative Expansion**: Expands a simple, short script seed into a deeply detailed long-form audio essay script targeting a vast multi-movement scope (equivalent to a 55,000+ words full multi-part volume in target intention). 
+     - **Aggressive Narrative Expansion & Curiosity Facts**: Expands a raw input seed into a deeply detailed, multi-movement long-form script (minimum 55,000 words target scope). It actively integrates lesser-known, highly engaging cognitive and neurochemical statistics (like Wolfram Schultz's 1997 discovery of 400% dopamine prediction error spikes under variable rewards, 460-nanometer cool-spectrum blue light suppressing melatonin synthesis by 88% for several hours, and B.F. Skinner's 1950 variable-ratio bird box mechanics).
      - **Four Structural Expansion Levers**: Continually applies four precise levers to expand any input seed:
        1. *The Micro-Macro Loop (Conceptual Detours)*: Zooms in on biochemical, behavioral, or structural histories (e.g., expanding an engineer's design intent into Silicon Valley optimization retention metrics and lab layouts).
        2. *Rhetorical Reframing & Structural Looping*: Analyzes core truths repeatedly through physical human experience, mechanical system failure, and philosophical agency perspectives.
@@ -51,7 +51,7 @@ Features the custom corporate **Sophisticated Dark Design Theme**:
        - *Movement IV: The Macro Consequence* (societal fallout).
        - *Movement V: The Sovereignty Blueprint* (reclaiming autonomy).
    - **Strict Word-Ceiling Metrics & Safety Alerts**: Each narration block has a real-time word counter indicating the paragraph length. Highlighting turns red and pulses if a block exceeds the strict 410-word ceiling constraint.
-   - **Markdown Horizontal-Rule Chunks**: When documentary style is chosen, the exported copy and downloads are formatted strictly, separating each block under 410 words via standard Markdown horizontal rules (`---`) with zero meta indicators or tag metrics.
+   - **One Continuous Spoken Script**: Final spoken prose compiles into one single, continuous flowing narrative with zero `---` divider tokens, completely omitting empty pauses to ensure direct, professional voice synthesis and recording.
 
 7. **Interactive Narrative Sandbox**:
    - Edit section names and summarization notes on the fly.

@@ -697,7 +697,7 @@ export default function App() {
           .join('\n');
       })
       .filter(Boolean)
-      .join(isDocStyle ? '\n\n---\n\n' : '\n\n');
+      .join('\n\n');
   };
 
   const handleCopyToClipboard = () => {
