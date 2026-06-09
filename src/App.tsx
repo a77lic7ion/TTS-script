@@ -1132,7 +1132,28 @@ export default function App() {
               <select
                 id="narration-style-selector"
                 value={settings.narrationStyle || 'cinematic'}
-                onChange={(e) => setSettings(p => ({ ...p, narrationStyle: e.target.value as any }))}
+                onChange={(e) => {
+                  const val = e.target.value as any;
+                  setSettings(p => ({ ...p, narrationStyle: val }));
+                  if (val === 'documentary') {
+                    const attPreset = SCRIPT_PRESETS.find(p => p.id === 'attenborough-cybernetic');
+                    if (attPreset) {
+                      setRawText(attPreset.rawText);
+                      setSubject("Cybernetic Captives & Biological Feedbacks");
+                      setSections(attPreset.refactored.map((s, sIdx) => ({
+                        id: `sec-doc-${sIdx}-${Date.now()}`,
+                        title: s.title,
+                        summary: s.summary,
+                        lines: s.lines.map((l, lIdx) => ({
+                          id: `line-doc-${sIdx}-${lIdx}-${Date.now()}`,
+                          text: l.text,
+                          rule: l.rule,
+                          badgeText: l.badgeText
+                        }))
+                      })));
+                    }
+                  }
+                }}
                 className="w-full bg-[#0c0c0d] border border-white/5 rounded px-2.5 py-2 text-xs text-amber-500 focus:outline-none focus:border-amber-500/50 cursor-pointer font-bold font-mono"
               >
                 <option value="cinematic">Cinematic Drama (TCCD standard)</option>

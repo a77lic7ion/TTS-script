@@ -37,7 +37,19 @@ Features the custom corporate **Sophisticated Dark Design Theme**:
 
 6. **Narration Architecture Styles (Cinematic vs. David Attenborough Documentary)**:
    - **Cinematic Drama Mode**: Emits standard conversational dramatic narration suitable for emotional openings and dramatic, fluid show pacing.
-   - **David Attenborough Documentary Mode**: Adapts high-fidelity expert TTS engineering rules to emulate a slow, deeply observant documentary narrator. Forces deliberate unhurried observation, a precise scientific vocabulary (e.g., *vast, intricate, Relentless*), punctuation-controlled natural pauses (em-dashes and frequent period markers), and spaces or mechanisms grounding beginnings.
+   - **David Attenborough Documentary Mode (Psychological Audio-Essayist)**: Adapts high-fidelity expert TTS engineering rules to emulate a slow, deeply observant, and profound documentary narrator. 
+     - **Aggressive Narrative Expansion**: Expands a simple, short script seed into a deeply detailed long-form audio essay script targeting a vast multi-movement scope (equivalent to a 55,000+ words full multi-part volume in target intention). 
+     - **Four Structural Expansion Levers**: Continually applies four precise levers to expand any input seed:
+       1. *The Micro-Macro Loop (Conceptual Detours)*: Zooms in on biochemical, behavioral, or structural histories (e.g., expanding an engineer's design intent into Silicon Valley optimization retention metrics and lab layouts).
+       2. *Rhetorical Reframing & Structural Looping*: Analyzes core truths repeatedly through physical human experience, mechanical system failure, and philosophical agency perspectives.
+       3. *Physical & Environmental Scene-Setting*: Deconstructs physical space with sharp scientific precision (wavelengths of blue light, the exact pitch of glow in unlit bedrooms, glass slab haptics).
+       4. *Tactical Pauses & Pacing Indicators*: Forces natural unhurried pauses via em-dashes and short declarations.
+     - **Modular Structural Movements**: Automatically structure narration across:
+       - *Movement I: The Symptom* (immediate trap).
+       - *Movement II: The Infrastructure* (hidden engineered mechanics).
+       - *Movement III: The Biological Vulnerability* (developmental asymmetry).
+       - *Movement IV: The Macro Consequence* (societal fallout).
+       - *Movement V: The Sovereignty Blueprint* (reclaiming autonomy).
    - **Strict Word-Ceiling Metrics & Safety Alerts**: Each narration block has a real-time word counter indicating the paragraph length. Highlighting turns red and pulses if a block exceeds the strict 410-word ceiling constraint.
    - **Markdown Horizontal-Rule Chunks**: When documentary style is chosen, the exported copy and downloads are formatted strictly, separating each block under 410 words via standard Markdown horizontal rules (`---`) with zero meta indicators or tag metrics.
 

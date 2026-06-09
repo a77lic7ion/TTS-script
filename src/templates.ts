@@ -371,5 +371,37 @@ Closing. Here is what I want you to take from this. That feeling. The cannot-put
         ]
       }
     ]
+  },
+  {
+    id: "attenborough-cybernetic",
+    title: "David Attenborough Documentary Mode (Preset Seed)",
+    subtitle: "The Cybernetic Captives & Biological Feedbacks",
+    summary: "An ultra-premium, deeply clinical psychological seed for generating complex documentary essays focused on user retention mechanics, feedback loops, and neurological decay.",
+    rawText: `Movement I: The Symptom.
+A glowing device sits in an unlit room. Wavelengths of blue light reflect off a pair of dilated pupils. This is the modern capture. It is a biological organism caught in a cybernetic loop.
+
+Movement II: The Infrastructure.
+Silicon Valley behavior labs engineered this behavior. They utilized operant conditioning and variable rewards. The feed never ends. Every swipe is another pull of the virtual lever.
+
+Movement III: The Biological Vulnerability.
+A teenager's prefrontal cortex is still under construction. The dopamine pathway fires on anticipation. It is a developmental asymmetry.
+
+Movement IV: The Macro Consequence.
+Attention spans are decaying. Society is breaking down into polarized feedback bubbles. Personal sovereignty is replaced by algorithmic choice.
+
+Movement V: The Sovereignty Blueprint.
+Dismantle the loop. Reclaim focus through environmental design. Rebuild family connection. Reclaim sovereignty.`,
+    refactored: [
+      {
+        title: "Movement I: The Symptom",
+        summary: "The immediate visual and neurological state of digital capture.",
+        lines: [
+          { text: "A glowing device sits in an unlit room.", rule: "factual", badgeText: "Scene Setting" },
+          { text: "Wavelengths of blue light reflect off a pair of dilated pupils.", rule: "factual", badgeText: "Clinical Observation" },
+          { text: "This is the modern capture...", rule: "dramatic", badgeText: "Dramatic Core" },
+          { text: "a biological organism caught in a cybernetic loop.", rule: "none", badgeText: "Systemic Definition" }
+        ]
+      }
+    ]
   }
 ];
